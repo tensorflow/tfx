@@ -54,9 +54,6 @@ _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_JENSEN_SHANNON_DIVERGENCE_HIGH,
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_LOW_NUM_EXAMPLES,
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_HIGH_NUM_EXAMPLES,
-    # Any custom validation anomalies generated are passed through, regardless
-    # of whether those anomalies are generated from multiple datasets.
-    anomalies_pb2.AnomalyInfo.Type.CUSTOM_VALIDATION,
 ])
 
 
@@ -278,10 +275,6 @@ class Executor(base_executor.BaseExecutor):
     config = _get_distribution_validator_config(input_dict, exec_properties)
     logging.info('Running distribution_validator with config %s', config)
 
-    custom_validation_config = exec_properties.get(
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY
-    )
-
     # Set up pairs of splits to validate.
     split_pairs = []
     for test_split in artifact_utils.decode_split_names(
@@ -341,7 +334,6 @@ class Executor(base_executor.BaseExecutor):
           test_stats_split,
           schema,
           previous_statistics=baseline_stats_split,
-          custom_validation_config=custom_validation_config,
       )
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)

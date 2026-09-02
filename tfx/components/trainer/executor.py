@@ -22,6 +22,7 @@ from tfx import types
 from tfx.components.trainer import constants
 from tfx.components.trainer import fn_args_utils
 from tfx.components.util import udf_utils
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
@@ -87,6 +88,15 @@ class GenericExecutor(base_executor.BaseExecutor):
   def _GetFnArgs(self, input_dict: Dict[str, List[types.Artifact]],
                  output_dict: Dict[str, List[types.Artifact]],
                  exec_properties: Dict[str, Any]) -> fn_args_utils.FnArgs:
+    if standard_component_specs.STATISTICS_KEY in input_dict.keys():
+        stats_artifact = artifact_utils.get_single_instance(
+            input_dict[standard_component_specs.STATISTICS_KEY])
+        split_names =  artifact_utils.decode_split_names(stats_artifact.split_names)
+        num_examples = {}
+        for split in split_names:
+            stats = stats_artifact_utils.load_statistics(stats_artifact,
+                                                           split).proto()
+            num_examples[split] = stats.datasets[0].num_examples
     if input_dict.get(standard_component_specs.HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
           artifact_utils.get_single_uri(
@@ -115,6 +125,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     result.model_run_dir = model_run_dir
     result.schema_file = result.schema_path
     result.hyperparameters = hyperparameters_config
+    if standard_component_specs.STATISTICS_KEY in input_dict.keys():
+        result.num_examples = num_examples
     return result
 
   def Do(self, input_dict: Dict[str, List[types.Artifact]],

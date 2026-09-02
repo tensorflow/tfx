@@ -1,53 +1,41 @@
-name: deploy-docs
+name: docs
+
 on:
-  workflow_dispatch:
   push:
     branches:
       - 'master'
   pull_request:
+    branches:
+      - 'master'
+  workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+
 jobs:
-  deploy:
+  build:
+    name: Build docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Configure Git Credentials
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-        if: (github.event_name != 'pull_request')
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          python-version: '3.9'
+          persist-credentials: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.10'
           cache: 'pip'
           cache-dependency-path: |
             setup.py
             tfx/dependencies.py
             requirements-docs.txt
 
-      - name: Save time for cache for mkdocs
-        run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
-
-      - name: Caching
-        uses: actions/cache@v4
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
-          restore-keys: |
-            mkdocs-material-
-
       - name: Install Dependencies
         run: pip install -r requirements-docs.txt
 
-      - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
-        if: (github.event_name != 'pull_request')
-
       - name: Build docs to check for errors
         run: mkdocs build
-        if: (github.event_name == 'pull_request')

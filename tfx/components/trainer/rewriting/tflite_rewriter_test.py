@@ -181,7 +181,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
   @mock.patch('tfx.components.trainer.rewriting.'
               'tflite_rewriter._create_tflite_compatible_saved_model')
-  @mock.patch('tensorflow.lite.TFLiteConverter.from_saved_model')
+  @mock.patch('tfx.components.trainer.rewriting.tflite_rewriter._TFLiteConverter.from_saved_model')
   def testInvokeTFLiteRewriterQuantizationFullIntegerFailsNoData(
       self, converter, model):
 
@@ -231,7 +231,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     with fileio.open(expected_model, 'rb') as f:
       self.assertEqual(f.read(), b'model')
 
-  @mock.patch('tensorflow.lite.TFLiteConverter.from_saved_model')
+  @mock.patch('tfx.components.trainer.rewriting.tflite_rewriter._TFLiteConverter.from_saved_model')
   def testInvokeTFLiteRewriterWithSignatureKey(self, converter):
     m = self.ConverterMock()
     converter.return_value = m

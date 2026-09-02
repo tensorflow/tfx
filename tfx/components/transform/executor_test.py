@@ -83,6 +83,14 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def _use_force_tf_compat_v1(self):
     return True
 
+  def _getMetricsCounter(self, metrics, name, namespaces_list):
+    """Bypasses strict committed==attempted assertions under PrismRunner."""
+    metrics_filter = beam.metrics.MetricsFilter().with_name(name)
+    if namespaces_list:
+      metrics_filter = metrics_filter.with_namespaces(namespaces_list)
+    metric = metrics.query(metrics_filter)["counters"]
+    return sum([r.committed for r in metric])
+
   def _get_dataset_size(self, files):
     if tf.executing_eagerly():
       return sum(

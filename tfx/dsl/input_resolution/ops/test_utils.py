@@ -197,6 +197,30 @@ class ResolverTestCase(
 ):
   """MLMD mixins for testing ResolverOps and resolver functions."""
 
+  @property
+  def is_zetasql_supported(self) -> bool:
+    if not hasattr(self, '_is_zetasql_supported'):
+      try:
+        options = metadata_store_pb2.LineageSubgraphQueryOptions(
+            starting_artifacts=metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
+                filter_query='id IN (1)'
+            ),
+            max_num_hops=1,
+            direction=metadata_store_pb2.LineageSubgraphQueryOptions.Direction.DOWNSTREAM,
+        )
+        self.store.get_lineage_subgraph(
+            query_options=options, field_mask_paths=['artifacts']
+        )
+        self._is_zetasql_supported = True
+      except mlmd.errors.UnimplementedError as e:
+        if 'ZetaSQL dependency removed' in str(e):
+          self._is_zetasql_supported = False
+        else:
+          raise e
+      except Exception:
+        self._is_zetasql_supported = True
+    return self._is_zetasql_supported
+
   def prepare_tfx_artifact(
       self,
       artifact: Any,  # If set to types.Artifact, pytype throws spurious errors.

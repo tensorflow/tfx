@@ -149,6 +149,8 @@ class LatestPolicyModelOpTest(
     def setUp(self):
         super().setUp()
         self.init_mlmd()
+        if not self.is_zetasql_supported:
+            self.skipTest('ZetaSQL is required for latest policy model lineage tests.')
 
         self.model_1 = self.prepare_tfx_artifact(test_utils.Model)
         self.model_2 = self.prepare_tfx_artifact(test_utils.Model)

@@ -20,10 +20,10 @@ echo Running cloud serving...
 # Dir for model exported for serving, e.g., gs://<bucket>/serving_model/chicago_taxi_pipeline_kubeflow
 CLOUD_MODEL_DIR=$1
 
-gsutil ls $CLOUD_MODEL_DIR
+gcloud storage ls $CLOUD_MODEL_DIR
 
 # Pick out the directory containing the last trained model.
-MODEL_BINARIES=$(gsutil ls $CLOUD_MODEL_DIR \
+MODEL_BINARIES=$(gcloud storage ls $CLOUD_MODEL_DIR \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
 echo latest model: $MODEL_BINARIES

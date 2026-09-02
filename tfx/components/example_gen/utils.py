@@ -132,6 +132,25 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
   return example_pb2.Example(features=feature_pb2.Features(feature=feature))
 
 
+def _message_to_dict(message):
+  try:
+    return json_format.MessageToDict(
+        message,
+        including_default_value_fields=True,
+        preserving_proto_field_name=True)
+  except TypeError:
+    try:
+      return json_format.MessageToDict(
+          message,
+          always_print_primitive_fields=True,
+          preserving_proto_field_name=True)
+    except TypeError:
+      return json_format.MessageToDict(
+          message,
+          always_print_fields_with_no_presence=True,
+          preserving_proto_field_name=True)
+
+
 def generate_output_split_names(
     input_config: Union[example_gen_pb2.Input, Dict[str, Any]],
     output_config: Union[example_gen_pb2.Output, Dict[str, Any]]) -> List[str]:
@@ -162,15 +181,9 @@ def generate_output_split_names(
   # Convert proto to dict for easy sanity check. Otherwise we need to branch the
   # logic based on parameter types.
   if isinstance(output_config, example_gen_pb2.Output):
-    output_config = json_format.MessageToDict(
-        output_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
+    output_config = _message_to_dict(output_config)
   if isinstance(input_config, example_gen_pb2.Input):
-    input_config = json_format.MessageToDict(
-        input_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
+    input_config = _message_to_dict(input_config)
 
   if 'split_config' in output_config and 'splits' in output_config[
       'split_config']:
@@ -220,10 +233,7 @@ def make_default_output_config(
 ) -> example_gen_pb2.Output:
   """Returns default output config based on input config."""
   if isinstance(input_config, example_gen_pb2.Input):
-    input_config = json_format.MessageToDict(
-        input_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
+    input_config = _message_to_dict(input_config)
 
   if len(input_config['splits']) > 1:
     # Returns empty output split config as output split will be same as input.

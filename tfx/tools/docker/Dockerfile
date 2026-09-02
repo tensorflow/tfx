@@ -17,61 +17,130 @@ ARG BASE_IMAGE
 # Apache beam version to get Beam binaries.
 ARG BEAM_VERSION
 
-FROM gcr.io/tfx-oss-public/tfx_base:py310-20230921 as wheel-builder
-# docker build command should be run under root directory of github checkout.
-ENV TFX_DIR=/tfx
-ADD . ${TFX_DIR}/src
-WORKDIR ${TFX_DIR}
+FROM ${BASE_IMAGE} AS base-with-gcc13
+RUN /opt/conda/bin/conda install -y --override-channels -c conda-forge \
+    gcc_linux-64=13 \
+    gxx_linux-64=13 \
+    binutils_linux-64=2.40 \
+    ld_impl_linux-64=2.40
+
+ENV CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc
+ENV CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++
+ENV LD=/opt/conda/bin/x86_64-conda-linux-gnu-ld
+ENV AR=/opt/conda/bin/x86_64-conda-linux-gnu-ar
+ENV NM=/opt/conda/bin/x86_64-conda-linux-gnu-nm
+ENV OBJCOPY=/opt/conda/bin/x86_64-conda-linux-gnu-objcopy
+ENV OBJDUMP=/opt/conda/bin/x86_64-conda-linux-gnu-objdump
+ENV RANLIB=/opt/conda/bin/x86_64-conda-linux-gnu-ranlib
+ENV STRIP=/opt/conda/bin/x86_64-conda-linux-gnu-strip
+
+ENV BAZEL_COMPILER=gcc
+
+FROM base-with-gcc13 AS wheel-builder
+ARG BASE_IMAGE
+ARG BEAM_VERSION
+# Whether to use C++ wheels (tfdv, tfx_bsl) from the host cache (/tmp/wheels).
+# If true, cached wheels are used if available (this saves time when debugging the docker build issues).
+# If false, wheels are built from source even if they exist in the cache.
+ARG USE_CPP_WHEELS_FROM_TEMP=false
+# Whether to clear the persistent build caches (/tmp/wheels and bazel cache).
+ARG CLEAN_CPP_TEMP_CACHE=false
 
 # Specify what version of dependent libraries will be used. See dependencies.py.
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
-ENV USE_BAZEL_VERSION=6.5.0
 
-RUN python -m pip install --upgrade pip wheel setuptools tomli
+ENV USE_BAZEL_VERSION=7.7.0
+
+RUN apt-get update && apt-get install -y curl git openjdk-17-jdk-headless cmake && \
+    (find /opt/conda/bin -name "python3-config" | head -n 1 | xargs -I {} ln -sf {} /usr/bin/python-config) && \
+    (find /opt/conda/bin -name "python3-config" | head -n 1 | xargs -I {} ln -sf {} /opt/conda/bin/python-config)
+RUN mkdir -p /usr/local/lib/bazel/bin && \
+    curl -fLO https://github.com/bazelbuild/bazel/releases/download/${USE_BAZEL_VERSION}/bazel-${USE_BAZEL_VERSION}-linux-x86_64 && \
+    mv bazel-${USE_BAZEL_VERSION}-linux-x86_64 /usr/local/lib/bazel/bin/bazel && \
+    chmod +x /usr/local/lib/bazel/bin/bazel && \
+    ln -sf /usr/local/lib/bazel/bin/bazel /usr/local/bin/bazel
+ENV PATH="/usr/local/lib/bazel/bin:${PATH}"
+
+
+COPY . /tfx_src/src/
+WORKDIR /tfx_src/src/
+
+# 1. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Normal production build path
+RUN if [ "$USE_CPP_WHEELS_FROM_TEMP" = "false" ]; then \
+      echo "Rebuild of C++ wheels (tfdv, tfx_bsl, tfmd, mlmd)..." && \
+      cp tfx/tools/docker/build_tfdv_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfx_bsl_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_mlmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/*.patch /tmp/ && \
+      mkdir -p /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfmd_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_mlmd_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfdv_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfx_bsl_wheels.sh /tfx_src/src/dist_wheels ; \
+    fi
+
+# 2. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Cached Path to avoid any CPP rebuilds
+RUN --mount=type=cache,target=/tmp/wheels --mount=type=cache,target=/root/.cache/bazel \
+    if [ "$USE_CPP_WHEELS_FROM_TEMP" = "true" ]; then \
+      echo "Re-use cached build of C++ wheels (tfdv, tfx_bsl, tfmd, mlmd)..." && \
+      cp tfx/tools/docker/build_tfdv_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfx_bsl_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_mlmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/*.patch /tmp/ && \
+      if [ ! -f /tmp/wheels/tensorflow_metadata-*.whl ]; then bash /tmp/build_tfmd_wheels.sh /tmp/wheels; fi && \
+      if [ ! -f /tmp/wheels/ml_metadata-*.whl ]; then bash /tmp/build_mlmd_wheels.sh /tmp/wheels; fi && \
+      if [ ! -f /tmp/wheels/tensorflow_data_validation-*.whl ]; then bash /tmp/build_tfdv_wheels.sh /tmp/wheels; fi && \
+      if [ ! -f /tmp/wheels/tfx_bsl-*.whl ]; then bash /tmp/build_tfx_bsl_wheels.sh /tmp/wheels; fi && \
+      mkdir -p /tfx_src/src/dist_wheels && \
+      cp /tmp/wheels/tensorflow_metadata-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/ml_metadata-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/tensorflow_data_validation-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/tfx_bsl-*.whl /tfx_src/src/dist_wheels/ ; \
+    fi
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
-RUN cd ${TFX_DIR}/src; \
+RUN echo "Building TFX and SDK wheels from source..." && \
+    mkdir -p /tfx_src/src/dist_wheels && \
     if [ -e "package_build" ]; then \
-      bash -x package_build/initialize.sh; \
-      cd package_build/ml-pipelines-sdk; \
-      CFLAGS=$(/usr/bin/python-config --cflags) \
-        python setup.py bdist_wheel; \
-      cd ../../package_build/tfx; \
-      CFLAGS=$(/usr/bin/python-config --cflags) \
-        python setup.py bdist_wheel; \
-      cd ../..; \
-      MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
-      TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
+      bash -x package_build/initialize.sh && \
+      python package_build/tfx/setup.py gen_proto && \
+      CFLAGS=$(python-config --cflags) python package_build/ml-pipelines-sdk/setup.py bdist_wheel && \
+      CFLAGS=$(python-config --cflags) python package_build/tfx/setup.py bdist_wheel && \
+      cp package_build/ml-pipelines-sdk/dist/*.whl /tfx_src/src/dist_wheels/ && \
+      cp package_build/tfx/dist/*.whl /tfx_src/src/dist_wheels/ ; \
     else \
-      CFLAGS=$(/usr/bin/python-config --cflags) \
-        python setup.py bdist_wheel; \
-      MLSDK_WHEEL=; \
-      TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
-    fi; \
-    if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
-      CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install \
-          --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c tfx/tools/docker/requirements.txt; \
-    else \
-      CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c tfx/tools/docker/requirements.txt; \
-    fi;
+      python setup.py gen_proto && \
+      CFLAGS=$(python-config --cflags) python setup.py bdist_wheel && \
+      cp dist/*.whl /tfx_src/src/dist_wheels/ ; \
+    fi
 
-# We need to name this step for the next COPY --from command.
-FROM apache/beam_python3.10_sdk:${BEAM_VERSION} as beam-worker
+# --- Stage 2: beam-worker ---
+FROM apache/beam_python3.10_sdk:${BEAM_VERSION} AS beam-worker
 
-# Build stage to extend DLVM image.
-FROM ${BASE_IMAGE} as install
-
-# Additional Python packages which will be installed.
+# --- Stage 3: install (Final) ---
+FROM base-with-gcc13 AS install
+ARG BASE_IMAGE
 ARG ADDITIONAL_PACKAGES
-
-# Specify what version of dependent libraries will be used. See dependencies.py.
+ENV TF_CPP_MIN_LOG_LEVEL=3
+# Disables Legacy "Virtual" Devices
+ENV TF_XLA_FLAGS="--tf_xla_enable_xla_devices=false"
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
+ENV TF_USE_LEGACY_KERAS=1
+
+# 1. Apply OS security updates and install required system libraries
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libsnappy-dev \
+    libcurl4-openssl-dev \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy from image matching installed version of 'apache-beam'.
 COPY --from=beam-worker /opt/apache/beam /opt/apache/beam
@@ -84,21 +153,58 @@ ENTRYPOINT ["/opt/apache/beam/boot"]
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-RUN sed -i 's/python3/python/g' /usr/bin/pip
+COPY --from=wheel-builder /tfx_src/src /tfx_src/src
 
-RUN python -m pip install --upgrade pip
-
-COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
-WORKDIR /tfx/src
-
-RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
-    TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
+# 2. Consolidated Installation and Security Remediation in a Single RUN layer
+# Combining upgrade, install, purge, and cache clean into one multi-command execution
+# ensures intermediate vulnerable packages and conda caches never persist in layer tarballs.
+RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
+    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt && \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
-      python -m pip install \
-        --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-        ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ${ADDITIONAL_PACKAGES} ; \
+	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
+            --extra-index-url https://pypi-nightly.tensorflow.org/simple \
+	    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+	    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt \
+	    /tfx_src/src/dist_wheels/*.whl \
+	    /tfx_src/src/tfx/tools/docker/wheels/*.whl \
+	    "$(find /tfx_src/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
+	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     else \
-      python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] \
-      ${ADDITIONAL_PACKAGES} ; \
+	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
+	    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+	    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt \
+	    /tfx_src/src/dist_wheels/*.whl \
+	    /tfx_src/src/tfx/tools/docker/wheels/*.whl \
+	    "$(find /tfx_src/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
+	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     fi && \
-    echo "Installed python packages:\n" && python -m pip list
+    for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
+    rm -rf /usr/local/go && \
+    rm -rf /opt/apache/beam && \
+    /opt/conda/bin/conda remove -y --force go golang || true && \
+    rm -rf /opt/conda/go /opt/conda/lib/go /opt/conda/lib/golang /opt/conda/share/go /opt/conda/share/golang /opt/conda/bin/go /opt/conda/bin/gofmt /usr/lib/go && \
+    find /opt/conda -name "*golang*" -delete || true && \
+    find /opt/conda -name "*.go" -delete || true && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    python -m pip install --upgrade --no-cache-dir \
+        lxml \
+        idna \
+        python-dotenv \
+        aiohttp \
+        protobuf>=6.33.5 \
+        cryptography>=48.0.1 \
+        bleach>=6.4.0 \
+        pygments>=2.20.0 \
+        pyjwt || true && \
+    (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
+    rm -rf /opt/conda/pkgs/* && \
+    rm -f /opt/conda/lib/python3.10/ensurepip/_bundled/pip-23.0.1-py3-none-any.whl && \
+    rm -rf /usr/lib/google-cloud-sdk/platform/bundledpythonunix && \
+    find /opt/conda -name "*.tar.bz2" -type f -delete || true && \
+    find /opt/conda -name "*.conda" -type f -delete || true && \
+    find /root/.cache -type f -delete || true
+
+RUN echo "Installed python packages:\n" && python -m pip list && \
+    echo "Setuptools version:" && python -c "import setuptools; print(setuptools.__version__)"

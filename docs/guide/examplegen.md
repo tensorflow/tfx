@@ -248,7 +248,7 @@ Retrieving a certain span can be done with RangeConfig, which is detailed below.
 ### Date
 
 !!! Note
-    This feature is only availible after TFX 0.24.0.
+    This feature is only available after TFX 0.24.0.
 
 If your data source is organized on filesystem by date, TFX supports mapping
 dates directly to span numbers. There are three specs to represent mapping from
@@ -308,7 +308,7 @@ example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 ### Version
 
 !!! Note
-    This feature is only availible after TFX 0.24.0.
+    This feature is only available after TFX 0.24.0.
 
 Version can be retrieved by using '{VERSION}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):

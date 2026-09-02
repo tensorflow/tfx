@@ -219,12 +219,26 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             | 'WritePredictionLogs' >> beam.io.WriteToTFRecord(
                 os.path.join(inference_result.uri, _PREDICTION_LOGS_FILE_NAME),
                 file_name_suffix='.gz',
+        num_shards=self._get_num_shards(self._beam_pipeline_args),
                 coder=beam.coders.ProtoCoder(prediction_log_pb2.PredictionLog)))
 
     if output_examples:
       logging.info('Output examples written to %s.', output_examples.uri)
     if inference_result:
       logging.info('Inference result written to %s.', inference_result.uri)
+
+  def _get_num_shards(self, beam_pipeline_args: List[str]) -> int:
+    """Returns 1 if running locally on DirectRunner/PrismRunner to avoid bugs."""
+    try:
+      from apache_beam.options.pipeline_options import StandardOptions
+      from apache_beam.options.pipeline_options import PipelineOptions
+      options = PipelineOptions(beam_pipeline_args)
+      runner = options.view_as(StandardOptions).runner
+      if runner in (None, 'DirectRunner', 'PrismRunner', 'PortableRunner', 'FnApiRunner'):
+        return 1
+    except Exception:  # pylint: disable=broad-exception-caught
+      pass
+    return 0
 
 
 def _MakeParseFn(

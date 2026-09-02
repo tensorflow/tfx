@@ -46,6 +46,8 @@ class SiblingsOpTest(
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+    if not self.is_zetasql_supported:
+      self.skipTest('ZetaSQL is required for siblings lineage tests.')
 
     self.spans_and_versions = [(1, 0), (2, 0), (3, 0)]
     self.examples = self.create_examples(self.spans_and_versions)

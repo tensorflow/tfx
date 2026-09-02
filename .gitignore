@@ -34,6 +34,8 @@ package_build/*/build
 package_build/*/dist
 package_build/*/setup.py
 package_build/*/tfx
+package_build/*/LICENSE
+package_build/*/MANIFEST.in
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -140,6 +142,14 @@ dmypy.json
 bazel-*
 **/*_pb2.py
 **/*_pb2_grpc.py
+# Gradle build/cache/distribution directories
+.gradle/
+**/gradle-8.5/
+**/build/
+!/build/
+/build/bdist.linux-x86_64/
+/build/lib/
+
 # LINT.ThenChange(.dockerignore)
 
 MODULE.bazel

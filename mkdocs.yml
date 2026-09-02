@@ -41,6 +41,8 @@ plugins:
   - autorefs
   - mkdocstrings:
       default_handler: python
+      inventories:
+        - https://docs.python.org/3/objects.inv
       handlers:
         python:
           options:
@@ -68,8 +70,6 @@ plugins:
               - "!^logger"
             extensions:
               - griffe_inherited_docstrings
-          import:
-            - https://docs.python.org/3/objects.inv
   - mkdocs-jupyter:
       execute: false
       execute_ignore: # There are issues with executing these notebooks

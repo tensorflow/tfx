@@ -18,6 +18,7 @@ from tfx.components.trainer import component
 from tfx.components.trainer import executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
+from tfx.types import artifact_utils
 from tfx.proto import trainer_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -30,6 +31,10 @@ class ComponentTest(tf.test.TestCase):
     super().setUp()
 
     self.examples = channel_utils.as_channel([standard_artifacts.Examples()])
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    self.statistics = channel_utils.as_channel([statistics_artifact])
     self.transform_graph = channel_utils.as_channel(
         [standard_artifacts.TransformGraph()])
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
@@ -51,6 +56,23 @@ class ComponentTest(tf.test.TestCase):
     trainer = component.Trainer(
         module_file=module_file,
         examples=self.examples,
+        transform_graph=self.transform_graph,
+        schema=self.schema,
+        custom_config={'test': 10})
+    self._verify_outputs(trainer)
+    self.assertEqual(
+        module_file,
+        trainer.spec.exec_properties[standard_component_specs.MODULE_FILE_KEY])
+    self.assertEqual(
+        '{"test": 10}', trainer.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY])
+
+  def testConstructFromModuleFileWithStatistics(self):
+    module_file = '/path/to/module/file'
+    trainer = component.Trainer(
+        module_file=module_file,
+        examples=self.examples,
+        statistics=self.statistics,
         transform_graph=self.transform_graph,
         schema=self.schema,
         custom_config={'test': 10})

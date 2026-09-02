@@ -64,6 +64,253 @@ class MetadataResolver:
     self._store = store
     self._mlmd_connection_manager = mlmd_connection_manager
 
+  def _evaluate_filter_query(
+      self,
+      artifact: metadata_store_pb2.Artifact,
+      artifact_type: Optional[metadata_store_pb2.ArtifactType],
+      filter_query: str,
+  ) -> bool:
+    """Evaluates simple metadata resolver filter queries locally in python."""
+    if not filter_query:
+      return True
+
+    query = filter_query.strip()
+
+    if ' OR ' in query or ' or ' in query:
+      or_clauses = query.replace(' OR ', ' or ').split(' or ')
+      return any(
+          self._evaluate_filter_query(artifact, artifact_type, c)
+          for c in or_clauses
+      )
+
+    if ' AND ' in query or ' and ' in query:
+      and_clauses = query.replace(' AND ', ' and ').split(' and ')
+      return all(
+          self._evaluate_filter_query(artifact, artifact_type, c)
+          for c in and_clauses
+      )
+
+    if ' IN ' in query or ' in ' in query:
+      field, values_str = query.replace(' IN ', ' in ').split(' in ')
+      field = field.strip()
+      values = [v.strip('"\' ') for v in values_str.strip('()').split(',')]
+      if field == 'name':
+        return artifact.name in values
+      elif field == 'type' and artifact_type:
+        return artifact_type.name in values
+      elif field == 'id':
+        return artifact.id in [int(v) for v in values]
+      return False
+
+    if '=' in query:
+      field, val = query.split('=', 1)
+      field = field.strip()
+      val = val.strip('"\' ')
+      if field == 'name':
+        return artifact.name == val
+      elif field == 'type' and artifact_type:
+        return artifact_type.name == val
+      elif field == 'id':
+        return str(artifact.id) == val
+      return False
+
+    return True
+
+  def _get_filtered_artifacts(
+      self,
+      artifact_ids: List[int],
+      filter_query: Optional[str] = None,
+      limit: Optional[int] = None,
+  ) -> List[metadata_store_pb2.Artifact]:
+    """Gets artifacts by ID and applies filter query fallback locally if ZetaSQL is missing."""
+    if not artifact_ids:
+      return []
+
+    try:
+      artifact_ids_str = ','.join(str(id) for id in artifact_ids)
+      fq = f'id IN ({artifact_ids_str})'
+      if filter_query:
+        fq = f'{fq} AND ({filter_query})'
+      list_options = mlmd.ListOptions(filter_query=fq)
+      if limit:
+        list_options.limit = limit
+      return self._store.get_artifacts(list_options=list_options)
+    except Exception as e:
+      if 'ZetaSQL dependency removed' not in str(e):
+        raise e
+
+      # Non-ZetaSQL Fallback Query Processing:
+      artifacts = self._store.get_artifacts_by_id(artifact_ids)
+      if not filter_query:
+        filtered = artifacts
+      else:
+        type_ids = {a.type_id for a in artifacts}
+        artifact_types = self._store.get_artifact_types_by_id(list(type_ids))
+        artifact_type_by_id = {t.id: t for t in artifact_types}
+        filtered = [
+            a
+            for a in artifacts
+            if self._evaluate_filter_query(
+                a, artifact_type_by_id.get(a.type_id), filter_query
+            )
+        ]
+      if limit:
+        filtered = filtered[:limit]
+      return filtered
+
+  def _get_lineage_subgraph_fallback(
+      self,
+      direction: metadata_store_pb2.LineageSubgraphQueryOptions.Direction,
+      starting_artifact_ids: List[int],
+      max_num_hops: int,
+  ) -> metadata_store_pb2.LineageGraph:
+    """Builds a lineage subgraph recursively in Python for ZetaSQL-disabled environments."""
+    artifacts_by_id = {}
+    events_by_key = {}
+
+    starting_artifacts = self._store.get_artifacts_by_id(starting_artifact_ids)
+    for a in starting_artifacts:
+      artifacts_by_id[a.id] = a
+
+    current_artifact_ids = set(starting_artifact_ids)
+    hops_remaining = max_num_hops
+
+    while current_artifact_ids and hops_remaining > 0:
+      events = self._store.get_events_by_artifact_ids(
+          list(current_artifact_ids)
+      )
+
+      if (
+          direction
+          == metadata_store_pb2.LineageSubgraphQueryOptions.Direction.DOWNSTREAM
+      ):
+        target_events = [
+            e
+            for e in events
+            if e.type
+            in [
+                metadata_store_pb2.Event.INPUT,
+                metadata_store_pb2.Event.DECLARED_INPUT,
+            ]
+        ]
+      else:
+        target_events = [
+            e
+            for e in events
+            if e.type
+            in [
+                metadata_store_pb2.Event.OUTPUT,
+                metadata_store_pb2.Event.DECLARED_OUTPUT,
+                metadata_store_pb2.Event.PENDING_OUTPUT,
+            ]
+        ]
+
+      if not target_events:
+        break
+
+      execution_ids = {e.execution_id for e in target_events}
+
+      all_exec_events = self._store.get_events_by_execution_ids(
+          list(execution_ids)
+      )
+
+      if (
+          direction
+          == metadata_store_pb2.LineageSubgraphQueryOptions.Direction.DOWNSTREAM
+      ):
+        neighbor_events = [
+            e
+            for e in all_exec_events
+            if e.type
+            in [
+                metadata_store_pb2.Event.OUTPUT,
+                metadata_store_pb2.Event.DECLARED_OUTPUT,
+                metadata_store_pb2.Event.PENDING_OUTPUT,
+            ]
+        ]
+      else:
+        neighbor_events = [
+            e
+            for e in all_exec_events
+            if e.type
+            in [
+                metadata_store_pb2.Event.INPUT,
+                metadata_store_pb2.Event.DECLARED_INPUT,
+            ]
+        ]
+
+      if not neighbor_events:
+        break
+
+      # Verify if any new path links have been mapped during this hop
+      new_events_found = False
+      for e in target_events + neighbor_events:
+        key = (e.artifact_id, e.execution_id, e.type)
+        if key not in events_by_key:
+          events_by_key[key] = e
+          new_events_found = True
+
+      if not new_events_found:
+        break
+
+      next_artifact_ids = {e.artifact_id for e in neighbor_events}
+      new_artifact_ids = next_artifact_ids - set(artifacts_by_id.keys())
+
+      if new_artifact_ids:
+        next_artifacts = self._store.get_artifacts_by_id(list(new_artifact_ids))
+        for a in next_artifacts:
+          artifacts_by_id[a.id] = a
+
+      current_artifact_ids = next_artifact_ids
+      hops_remaining -= 2
+
+    lineage_graph = metadata_store_pb2.LineageGraph()
+    lineage_graph.artifacts.extend(artifacts_by_id.values())
+    lineage_graph.events.extend(events_by_key.values())
+
+    type_ids = {a.type_id for a in artifacts_by_id.values()}
+    artifact_types = self._store.get_artifact_types_by_id(list(type_ids))
+    lineage_graph.artifact_types.extend(artifact_types)
+
+    return lineage_graph
+
+  def _get_lineage_subgraph(
+      self,
+      query_options: metadata_store_pb2.LineageSubgraphQueryOptions,
+      field_mask_paths: List[str],
+  ) -> metadata_store_pb2.LineageGraph:
+    """Invokes get_lineage_subgraph, with local python fallback if ZetaSQL is missing."""
+    try:
+      return self._store.get_lineage_subgraph(
+          query_options=query_options,
+          field_mask_paths=field_mask_paths,
+      )
+    except Exception as e:
+      if 'ZetaSQL dependency removed' not in str(e):
+        raise e
+
+      starting_nodes = query_options.starting_artifacts
+      if 'id IN (' in starting_nodes.filter_query:
+        ids_str = starting_nodes.filter_query.split('id IN (')[1].split(')')[0]
+        starting_artifact_ids = [
+            int(i.strip()) for i in ids_str.split(',') if i.strip()
+        ]
+      elif 'uri = ' in starting_nodes.filter_query:
+        uri = starting_nodes.filter_query.split('uri = ')[1].strip('"\' ')
+        starting_artifacts = self._store.get_artifacts_by_uri(uri)
+        starting_artifact_ids = [a.id for a in starting_artifacts]
+      else:
+        raise NotImplementedError(
+            'Unsupported filter query for starting nodes fallback:'
+            f' {starting_nodes.filter_query}'
+        )
+
+      return self._get_lineage_subgraph_fallback(
+          direction=query_options.direction,
+          starting_artifact_ids=starting_artifact_ids,
+          max_num_hops=query_options.max_num_hops,
+      )
+
   def _get_external_upstream_or_downstream_artifacts(
       self,
       external_artifact_ids: List[str],
@@ -311,11 +558,8 @@ class MetadataResolver:
       if not filter_query:
         artifacts = store.get_artifacts_by_id(artifact_ids)
       else:
-        artifacts = store.get_artifacts(
-            list_options=mlmd.ListOptions(
-                filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})',
-                limit=_MAX_NUM_STARTING_NODES,
-            )
+        artifacts = self._get_filtered_artifacts(
+            artifact_ids, filter_query=filter_query, limit=_MAX_NUM_STARTING_NODES
         )
       artifact_type_ids = [a.type_id for a in artifacts]
       artifact_types = store.get_artifact_types_by_id(artifact_type_ids)
@@ -337,7 +581,7 @@ class MetadataResolver:
         _EVENTS_FIELD_MASK_PATH,
         _ARTIFACT_TYPES_MASK_PATH,
     ]
-    lineage_graph = store.get_lineage_subgraph(
+    lineage_graph = self._get_lineage_subgraph(
         query_options=options,
         field_mask_paths=field_mask_paths,
     )
@@ -370,12 +614,9 @@ class MetadataResolver:
         candidate_artifact_ids.update(
             visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
         )
-      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids)
       # Send a call to metadata_store to get filtered downstream artifacts.
-      artifacts = store.get_artifacts(
-          list_options=mlmd.ListOptions(
-              filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})'
-          )
+      artifacts = self._get_filtered_artifacts(
+          list(candidate_artifact_ids), filter_query=filter_query
       )
       artifact_id_to_artifact = {
           artifact.id: artifact for artifact in artifacts
@@ -433,7 +674,7 @@ class MetadataResolver:
         max_num_hops=max_num_hops,
         direction=metadata_store_pb2.LineageSubgraphQueryOptions.Direction.DOWNSTREAM,
     )
-    lineage_graph = self._store.get_lineage_subgraph(
+    lineage_graph = self._get_lineage_subgraph(
         query_options=options,
         field_mask_paths=[
             _ARTIFACTS_FIELD_MASK_PATH,
@@ -600,11 +841,8 @@ class MetadataResolver:
       if not filter_query:
         artifacts = store.get_artifacts_by_id(artifact_ids)
       else:
-        artifacts = store.get_artifacts(
-            list_options=mlmd.ListOptions(
-                filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})',
-                limit=_MAX_NUM_STARTING_NODES,
-            )
+        artifacts = self._get_filtered_artifacts(
+            artifact_ids, filter_query=filter_query, limit=_MAX_NUM_STARTING_NODES
         )
       artifact_type_ids = [a.type_id for a in artifacts]
       artifact_types = store.get_artifact_types_by_id(artifact_type_ids)
@@ -626,7 +864,7 @@ class MetadataResolver:
         _EVENTS_FIELD_MASK_PATH,
         _ARTIFACT_TYPES_MASK_PATH,
     ]
-    lineage_graph = store.get_lineage_subgraph(
+    lineage_graph = self._get_lineage_subgraph(
         query_options=options,
         field_mask_paths=field_mask_paths,
     )
@@ -662,12 +900,9 @@ class MetadataResolver:
         candidate_artifact_ids.update(
             visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
         )
-      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids)
       # Send a call to metadata_store to get filtered upstream artifacts.
-      artifacts = store.get_artifacts(
-          list_options=mlmd.ListOptions(
-              filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})'
-          )
+      artifacts = self._get_filtered_artifacts(
+          list(candidate_artifact_ids), filter_query=filter_query
       )
       artifact_id_to_artifact = {
           artifact.id: artifact for artifact in artifacts
@@ -725,7 +960,7 @@ class MetadataResolver:
         max_num_hops=max_num_hops,
         direction=metadata_store_pb2.LineageSubgraphQueryOptions.Direction.UPSTREAM,
     )
-    lineage_graph = self._store.get_lineage_subgraph(
+    lineage_graph = self._get_lineage_subgraph(
         query_options=options,
         field_mask_paths=[
             _ARTIFACTS_FIELD_MASK_PATH,

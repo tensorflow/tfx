@@ -14,26 +14,84 @@
 """TFX components module."""
 
 # Components.
-from tfx.components.bulk_inferrer.component import BulkInferrer
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_diff.component import ExampleDiff
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.infra_validator.component import InfraValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.schema_gen.import_schema_gen.component import ImportSchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
-from tfx.components.tuner.component import Tuner
+try:
+  from tfx.components.bulk_inferrer.component import BulkInferrer
+except ImportError:
+  BulkInferrer = None
+
+try:
+  from tfx.components.evaluator.component import Evaluator
+except ImportError:
+  Evaluator = None
+
+try:
+  from tfx.components.example_diff.component import ExampleDiff
+except ImportError:
+  ExampleDiff = None
+
+try:
+  from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+except ImportError:
+  CsvExampleGen = None
+
+try:
+  from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
+except ImportError:
+  ImportExampleGen = None
+
+try:
+  from tfx.components.example_validator.component import ExampleValidator
+except ImportError:
+  ExampleValidator = None
+
+try:
+  from tfx.components.infra_validator.component import InfraValidator
+except ImportError:
+  InfraValidator = None
+
+try:
+  from tfx.components.pusher.component import Pusher
+except ImportError:
+  Pusher = None
+
+try:
+  from tfx.components.schema_gen.component import SchemaGen
+except ImportError:
+  SchemaGen = None
+
+try:
+  from tfx.components.schema_gen.import_schema_gen.component import ImportSchemaGen
+except ImportError:
+  ImportSchemaGen = None
+
+try:
+  from tfx.components.statistics_gen.component import StatisticsGen
+except ImportError:
+  StatisticsGen = None
+
+try:
+  from tfx.components.trainer.component import Trainer
+except ImportError:
+  Trainer = None
+
+try:
+  from tfx.components.transform.component import Transform
+except ImportError:
+  Transform = None
+
+try:
+  from tfx.components.tuner.component import Tuner
+except ImportError:
+  Tuner = None
 
 # For UDF needs.
 # pylint: disable=g-bad-import-order
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
-from tfx.components.tuner.component import TunerFnResult
+try:
+  from tfx.components.tuner.component import TunerFnResult
+except ImportError:
+  TunerFnResult = None
 
 # pylint: enable=g-bad-import-order
 __all__ = [

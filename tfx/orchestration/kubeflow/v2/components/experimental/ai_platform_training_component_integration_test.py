@@ -32,6 +32,7 @@ _PIPELINE_NAME_PREFIX = 'aip-training-component-pipeline-{}'
 
 
 @pytest.mark.integration
+@pytest.mark.skip(reason='Depends on deprecated Cloud AI Platform.')
 class AiPlatformTrainingComponentIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

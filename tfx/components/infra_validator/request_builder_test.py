@@ -439,8 +439,7 @@ class TestBuildRequests(tf.test.TestCase):
 
   def _PrepareTFServingRequestBuilder(self):
     patcher = mock.patch.object(
-        request_builder, '_TFServingRpcRequestBuilder',
-        wraps=request_builder._TFServingRpcRequestBuilder)
+        request_builder, '_TFServingRpcRequestBuilder')
     builder_cls = patcher.start()
     self.addCleanup(patcher.stop)
     return builder_cls

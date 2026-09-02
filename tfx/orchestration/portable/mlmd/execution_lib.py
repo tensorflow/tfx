@@ -639,16 +639,39 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
-  execution_query = q.And(
-      [
-          'contexts_%s.id = %s' % (i, context.id)
-          for i, context in enumerate(contexts)
-      ]
-  )
-  executions = metadata_handle.store.get_executions(
-      list_options=execution_query.list_options()
-  )
-  return executions
+  try:
+    execution_query = q.And(
+        [
+            'contexts_%s.id = %s' % (i, context.id)
+            for i, context in enumerate(contexts)
+        ]
+    )
+    executions = metadata_handle.store.get_executions(
+        list_options=execution_query.list_options()
+    )
+    return executions
+  except Exception as e:
+    logging.warning(
+        'Fallback to non-ZetaSQL contexts execution query due to: %s', e)
+    contexts_list = list(contexts)
+    if not contexts_list:
+      return []
+
+    execution_sets = []
+    for context in contexts_list:
+      execution_sets.append({
+          exec_item.id: exec_item
+          for exec_item in metadata_handle.store.get_executions_by_context(
+              context.id)
+      })
+
+    common_ids = set(execution_sets[0].keys())
+    for s in execution_sets[1:]:
+      common_ids.intersection_update(s.keys())
+
+    # Return the intersected executions sorted in stable creation time order.
+    results = [execution_sets[0][eid] for eid in common_ids]
+    return sorted(results, key=lambda e: e.create_time_since_epoch)
 
 
 @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)

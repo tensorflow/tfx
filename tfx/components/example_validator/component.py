@@ -16,7 +16,6 @@
 from typing import List, Optional
 
 from absl import logging
-from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx import types
 from tfx.components.example_validator import executor
 from tfx.dsl.components.base import base_component
@@ -70,9 +69,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.BaseChannel,
                schema: types.BaseChannel,
-               exclude_splits: Optional[List[str]] = None,
-               custom_validation_config: Optional[
-                   custom_validation_config_pb2.CustomValidationConfig] = None):
+               exclude_splits: Optional[List[str]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -81,8 +78,6 @@ class ExampleValidator(base_component.BaseComponent):
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None) is
         excluding no splits.
-      custom_validation_config: Optional configuration for specifying SQL-based
-        custom validations.
     """
     if exclude_splits is None:
       exclude_splits = []
@@ -92,6 +87,5 @@ class ExampleValidator(base_component.BaseComponent):
         statistics=statistics,
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
-        custom_validation_config=custom_validation_config,
         anomalies=anomalies)
     super().__init__(spec=spec)

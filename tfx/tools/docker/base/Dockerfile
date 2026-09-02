@@ -24,7 +24,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
 
 # Install python 3.10 and additional dependencies.
-RUN ${APT_COMMAND} update && \
+RUN ${APT_COMMAND} update && ${APT_COMMAND} upgrade && \
   ${APT_COMMAND} install --no-install-recommends -q software-properties-common && \
   add-apt-repository -y ppa:deadsnakes/ppa && \
   ${APT_COMMAND} update && \
@@ -45,9 +45,10 @@ RUN ${APT_COMMAND} update && \
   ${APT_COMMAND} autoclean && \
   ${APT_COMMAND} autoremove --purge
 
-# Pre-install pip so we can use the beta dependency resolver.
+# Pre-install pip and upgrade core packaging tools securely
 RUN wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py && \
-  pip install --upgrade --pre pip
+  python3 -m pip install --upgrade --no-cache-dir pip>=26.1.2 setuptools==82.0.0 wheel>=0.47.0 && \
+  rm -f get-pip.py
 
 # Install bazel
 RUN wget -O /bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64 && \

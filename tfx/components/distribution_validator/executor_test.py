@@ -19,7 +19,6 @@ import tempfile
 
 from absl import flags
 from absl.testing import parameterized
-from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.distribution_validator import executor
 from tfx.dsl.io import fileio
 from tfx.proto import distribution_validator_pb2
@@ -160,7 +159,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
               }
             }
             """,
-          'custom_validation_config': None,
           'expected_anomalies': """
         anomaly_info {
           key: "company"
@@ -224,7 +222,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             }
           }
        """,
-          'custom_validation_config': None,
           'expected_anomalies': """
                 anomaly_name_format: SERIALIZED_PATH
                 dataset_anomaly_info {
@@ -253,7 +250,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
               }
             }
             """,
-          'custom_validation_config': None,
           'expected_anomalies': """
         anomaly_name_format: SERIALIZED_PATH
         drift_skew_info {
@@ -269,70 +265,10 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
           """,
           'anomalies_blessed_value': 1,
       },
-      {
-          'testcase_name': 'custom_anomalies',
-          'config': """
-              default_slice_config: {
-              feature: {
-                  path: {
-                      step: 'company'
-                  }
-                  distribution_comparator: {
-                    infinity_norm: {
-                        threshold: .99
-                    }
-                  }
-              }
-            }
-            """,
-          'custom_validation_config': """
-            feature_pair_validations {
-              feature_test_path {
-                step: 'company'
-              }
-              feature_base_path {
-                step: 'company'
-              }
-              validations {
-                sql_expression: 'feature_test.string_stats.unique > feature_base.string_stats.unique * 2'
-                severity: ERROR
-                description: 'Test feature has too few unique values.'
-                }
-              }
-          """,
-          'expected_anomalies': """
-        anomaly_info {
-          key: "company"
-          value {
-            severity: ERROR
-            reason {
-              type: CUSTOM_VALIDATION
-              short_description: "Test feature has too few unique values."
-              description: "Custom validation triggered anomaly. Query: feature_test.string_stats.unique > feature_base.string_stats.unique * 2 Test dataset: default slice Base dataset:  Base path: company"            }
-            path {
-              step: "company"
-            }
-          }
-        }
-        anomaly_name_format: SERIALIZED_PATH
-        drift_skew_info {
-          path {
-            step: "company"
-          }
-          drift_measurements {
-            type: L_INFTY
-            value: 0.012277129468474923
-            threshold: 0.99
-          }
-        }
-          """,
-          'anomalies_blessed_value': 0,
-      },
   )
   def testAnomaliesGenerated(
       self,
       config,
-      custom_validation_config,
       expected_anomalies,
       anomalies_blessed_value,
   ):
@@ -354,10 +290,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     validation_config = text_format.Parse(
         config, distribution_validator_pb2.DistributionValidatorConfig())
-    if custom_validation_config is not None:
-      custom_validation_config = text_format.Parse(
-          custom_validation_config,
-          custom_validation_config_pb2.CustomValidationConfig())
 
     input_dict = {
         standard_component_specs.STATISTICS_KEY: [stats_artifact],
@@ -371,8 +303,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             json_utils.dumps([('train', 'eval')]),
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY:
             validation_config,
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
-            custom_validation_config,
     }
 
     output_dict = {
@@ -444,8 +374,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             json_utils.dumps([('train', 'eval')]),
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY:
             validation_config,
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
-            None,
     }
 
     output_data_dir = os.path.join(
@@ -1132,7 +1060,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY: json_utils.dumps(
             [('train', 'eval')]
         ),
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY: None,
     }
 
     output_dict = {
@@ -1257,7 +1184,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY: (
             validation_config
         ),
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY: None,
     }
 
     output_dict = {

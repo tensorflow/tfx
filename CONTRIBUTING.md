@@ -44,7 +44,7 @@ This project follows
 
 # Contributing Guidelines
 
-At this point, TFX only supports Python 3 (3.7, 3.8, and 3.9) on Linux and
+At this point, TFX only supports Python 3 (3.10, 3.11, 3.12, and 3.13) on Linux and
 MacOS. Please use one of these operating systems for development and testing.
 
 ## Setting up local development environment

@@ -47,6 +47,13 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest, parameterized.TestCase):
         'VersionInfo', ['major', 'minor', 'micro']
     )
     self.enter_context(mock.patch('sys.version_info', new=VersionInfo(3, 7, 0)))
+    self.enter_context(
+        mock.patch.object(
+            kubeflow_v2_dag_runner,
+            '_KUBEFLOW_TFX_IMAGE',
+            'gcr.io/tfx-oss-public/tfx:latest',
+        )
+    )
 
   def _compare_against_testdata(
       self,
