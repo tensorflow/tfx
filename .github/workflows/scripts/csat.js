@@ -39,9 +39,9 @@ module.exports = async ({ github, context }) => {
                 baseUrl = CONSTANT_VALUES.MODULE.CSAT.MEDIA_PIPE_BASE_URL;
             else
                 baseUrl = CONSTANT_VALUES.MODULE.CSAT.BASE_URL;
-             
-            const yesCsatparams = new URLSearchParams({ 
-                 [CONSTANT_VALUES.MODULE.CSAT.SATISFACTION_PARAM.toString()]: CONSTANT_VALUES.MODULE.CSAT.YES.toString(), 
+
+            const yesCsatparams = new URLSearchParams({
+                 [CONSTANT_VALUES.MODULE.CSAT.SATISFACTION_PARAM.toString()]: CONSTANT_VALUES.MODULE.CSAT.YES.toString(),
                  [CONSTANT_VALUES.MODULE.CSAT.ISSUEID_PARAM.toString()]: issue
             });
             const yesCsatlink = `${baseUrl}?${yesCsatparams.toString()}`;
@@ -49,7 +49,7 @@ module.exports = async ({ github, context }) => {
                    [CONSTANT_VALUES.MODULE.CSAT.SATISFACTION_PARAM.toString()]: CONSTANT_VALUES.MODULE.CSAT.NO.toString(),
                    [CONSTANT_VALUES.MODULE.CSAT.ISSUEID_PARAM.toString()]: issue
             });
-            const noCsatlink = `${baseUrl}?${noCsatparams.toString()}`; 
+            const noCsatlink = `${baseUrl}?${noCsatparams.toString()}`;
             const comment = CONSTANT_VALUES.MODULE.CSAT.MSG + '\n' + `[${CONSTANT_VALUES.MODULE.CSAT.YES.toString()}](${yesCsatlink})` + '\n' +
                 `[${CONSTANT_VALUES.MODULE.CSAT.NO.toString()}](${noCsatlink})` + '\n';
             let issueNumber = context.issue.number ?? context.payload.issue.number;
