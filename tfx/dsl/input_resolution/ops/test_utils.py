@@ -280,7 +280,7 @@ class ResolverTestCase(
       )
     self.put_execution(
         'ExampleGen',
-        inputs={},
+        inputs={},  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={'examples': self.unwrap_tfx_artifacts(examples)},
         contexts=contexts,
         connection_config=connection_config,
@@ -299,7 +299,7 @@ class ResolverTestCase(
     )
     self.put_execution(
         'Transform',
-        inputs=inputs,
+        inputs=inputs,  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={
             'transform_graph': self.unwrap_tfx_artifacts([transform_graph])
         },
@@ -322,7 +322,7 @@ class ResolverTestCase(
       inputs['transform_graph'] = self.unwrap_tfx_artifacts([transform_graph])
     self.put_execution(
         'TFTrainer',
-        inputs=inputs,
+        inputs=inputs,  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={'model': self.unwrap_tfx_artifacts([model])},
         contexts=contexts,
         connection_config=connection_config,
@@ -349,7 +349,7 @@ class ResolverTestCase(
 
     self.put_execution(
         'Evaluator',
-        inputs=inputs,
+        inputs=inputs,  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={'blessing': self.unwrap_tfx_artifacts([model_blessing])},
         contexts=contexts,
         connection_config=connection_config,
@@ -377,7 +377,7 @@ class ResolverTestCase(
 
     self.put_execution(
         'InfraValidator',
-        inputs={'model': self.unwrap_tfx_artifacts([model])},
+        inputs={'model': self.unwrap_tfx_artifacts([model])},  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={'result': self.unwrap_tfx_artifacts([model_infra_blessing])},
         contexts=contexts,
         connection_config=connection_config,
@@ -399,7 +399,7 @@ class ResolverTestCase(
       )
     self.put_execution(
         'ServomaticPusher',
-        inputs={'model_export': self.unwrap_tfx_artifacts([model])},
+        inputs={'model_export': self.unwrap_tfx_artifacts([model])},  # pytype: disable=wrong-arg-types  # dont-delete-module-type
         outputs={'model_push': self.unwrap_tfx_artifacts([model_push])},
         contexts=contexts,
         connection_config=connection_config,
