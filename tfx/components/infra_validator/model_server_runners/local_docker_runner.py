@@ -123,7 +123,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
           type(self._serving_binary).__name__))
 
     logging.info('Running container with parameter %s', run_params)
-    self._container = self._docker.containers.run(**run_params)
+    self._container = self._docker.containers.run(detach=True, **run_params)
 
   def WaitUntilRunning(self, deadline):
     assert self._container is not None, 'container has not been started.'
