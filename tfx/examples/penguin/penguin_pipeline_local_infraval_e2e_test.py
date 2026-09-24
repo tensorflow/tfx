@@ -46,7 +46,7 @@ class PenguinPipelineLocalInfravalEndToEndTest(
   def setUp(self):
     super().setUp()
     self._test_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        os.environ.get('TMPDIR', self.get_temp_dir()),
         self._testMethodName)
 
     self._pipeline_name = 'penguin_test'
