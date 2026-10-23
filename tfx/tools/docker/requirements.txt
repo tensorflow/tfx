@@ -29,7 +29,7 @@ bleach==6.1.0
 blinker==1.8.2
 cachelib==0.9.0
 cachetools==5.5.0
-certifi==2024.7.4
+certifi==2026.10.19
 cffi==1.17.1
 cfgv==3.4.0
 charset-normalizer==3.3.2
