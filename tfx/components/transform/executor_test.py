@@ -239,7 +239,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
             self._use_force_tf_compat_v1())
 
     # Executor for test.
-    self._transform_executor = executor.Executor()
+    self._transform_executor = executor.Executor(
+        executor.Executor.Context(beam_pipeline_args=['--runner=FnApiRunner'])
+    )
 
   def _verify_transform_outputs(self,
                                 materialize=True,
@@ -364,7 +366,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
-      result = self._makeTestPipeline()
+      result = self._TestPipeline(runner='FnApiRunner')
       pipelines.append(result)
       return result
 
