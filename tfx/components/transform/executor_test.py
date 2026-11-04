@@ -240,7 +240,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Executor for test.
     self._transform_executor = executor.Executor(
-        executor.Executor.Context(beam_pipeline_args=['--runner=FnApiRunner'])
+        executor.Executor.Context(
+            make_beam_pipeline_fn=lambda: beam.Pipeline(runner='FnApiRunner')
+        )
     )
 
   def _verify_transform_outputs(self,
