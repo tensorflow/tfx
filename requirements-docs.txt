@@ -6,3 +6,4 @@ mkdocs-autorefs
 mkdocs-jupyter
 mkdocs-caption
 markdown-grid-tables
+pymdown-extensions<11.0

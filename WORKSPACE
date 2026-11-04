@@ -56,6 +56,9 @@ http_archive(
       "https://github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
     ],
     strip_prefix = "tensorflow-%s" % _TENSORFLOW_GIT_COMMIT,
+    patch_cmds = [
+        "sed -i 's/3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a/00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248/g' third_party/xla/third_party/llvm/workspace.bzl",
+    ],
 )
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")

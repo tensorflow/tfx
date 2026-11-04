@@ -26,8 +26,8 @@ downloader_component = container_component.create_container_component(
     parameters={
         'url': str,
     },
-    # The component code uses gsutil to upload the data to GCS, so the
-    # container image needs to have gsutil installed and configured.
+    # The component code uses gcloud storage to upload the data to GCS, so the
+    # container image needs to have gcloud installed and configured.
     # Fixing b/150670779 by merging cl/294536017 will lift this limitation.
     image='gcr.io/google.com/cloudsdktool/cloud-sdk:278.0.0',
     command=[
@@ -60,8 +60,8 @@ grep_component = container_component.create_container_component(
     parameters={
         'pattern': str,
     },
-    # The component code uses gsutil to upload the data to GCS, so the
-    # container image needs to have gsutil installed and configured.
+    # The component code uses gcloud storage to upload the data to GCS, so the
+    # container image needs to have gcloud installed and configured.
     # Fixing b/150670779 by merging cl/294536017 will lift this limitation.
     image='gcr.io/google.com/cloudsdktool/cloud-sdk:278.0.0',
     command=[
@@ -94,8 +94,8 @@ print_component = container_component.create_container_component(
     inputs={
         'text': standard_artifacts.ExternalArtifact,
     },
-    # The component code uses gsutil to upload the data to GCS, so the
-    # container image needs to have gsutil installed and configured.
+    # The component code uses gcloud storage to upload the data to GCS, so the
+    # container image needs to have gcloud installed and configured.
     # Fixing b/150670779 by merging cl/294536017 will lift this limitation.
     image='gcr.io/google.com/cloudsdktool/cloud-sdk:278.0.0',
     command=[
