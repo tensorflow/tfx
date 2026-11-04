@@ -128,7 +128,7 @@ matplotlib==3.7.1
 mdit-py-plugins==0.4.2
 mdurl==0.1.2
 methodtools==0.4.7
-mistune==3.0.2
+mistune==3.3.3
 mmh==2.2
 more-itertools==10.5.0
 msgpack==1.1.0
