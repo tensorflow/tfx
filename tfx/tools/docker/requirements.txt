@@ -141,7 +141,7 @@ nest-asyncio==1.6.0
 nltk>=3.9.4
 nodeenv==1.9.1
 oauth2client==4.1.3
-oauthlib==3.2.2
+oauthlib==4.0.0
 objsize==0.6.1
 optax==0.2.2
 orbax-checkpoint==0.5.16
