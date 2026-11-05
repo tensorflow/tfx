@@ -79,11 +79,11 @@ def build_parameter_type_spec_legacy(
   """Extracts the artifact type info into ComponentInputsSpec.ParameterSpec."""
   is_runtime_param = isinstance(value, data_types.RuntimeParameter)
   result = pipeline_pb2.ComponentInputsSpec.ParameterSpec()
-  if isinstance(value, int) or (is_runtime_param and value.ptype == int):
+  if isinstance(value, int) or (is_runtime_param and value.ptype is int):
     result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.INT
-  elif isinstance(value, float) or (is_runtime_param and value.ptype == float):
+  elif isinstance(value, float) or (is_runtime_param and value.ptype is float):
     result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.DOUBLE
-  elif isinstance(value, str) or (is_runtime_param and value.ptype == str):
+  elif isinstance(value, str) or (is_runtime_param and value.ptype is str):
     result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.STRING
   else:
     # By default, unrecognized object will be json dumped, hence is string type.
@@ -98,11 +98,11 @@ def build_parameter_type_spec(
   """Extracts the artifact type info into ComponentInputsSpec.ParameterSpec."""
   is_runtime_param = isinstance(value, data_types.RuntimeParameter)
   result = pipeline_pb2.ComponentInputsSpec.ParameterSpec()
-  if isinstance(value, int) or (is_runtime_param and value.ptype == int):
+  if isinstance(value, int) or (is_runtime_param and value.ptype is int):
     result.parameter_type = pipeline_pb2.ParameterType.NUMBER_INTEGER
-  elif isinstance(value, float) or (is_runtime_param and value.ptype == float):
+  elif isinstance(value, float) or (is_runtime_param and value.ptype is float):
     result.parameter_type = pipeline_pb2.ParameterType.NUMBER_DOUBLE
-  elif isinstance(value, str) or (is_runtime_param and value.ptype == str):
+  elif isinstance(value, str) or (is_runtime_param and value.ptype is str):
     result.parameter_type = pipeline_pb2.ParameterType.STRING
   else:
     # By default, unrecognized object will be json dumped, hence is string type.
@@ -384,16 +384,23 @@ def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
     # Otherwise, fall back to the generic `Artifact` type schema.
     # To recover the Python type object at runtime, the artifact TYPE_NAME will
     # be encoded as the schema title.
+    # TODO: Support custom artifact properties
 
-    # Read the generic artifact schema template.
+    # Validate that the TYPE_NAME attribute matches the acceptable schema title name regex.
     if not _SCHEMA_TITLE_RE.fullmatch(artifact_type.TYPE_NAME):
       raise ValueError(
           f'Invalid custom artifact type name: {artifact_type.TYPE_NAME}')
+
+    # Read the generic artifact schema template.
     schema_path = os.path.join(
         os.path.dirname(__file__), 'artifact_types', 'Artifact.yaml')
+
+    # Load in the default artifact schema
     data = yaml.safe_load(fileio.open(schema_path, 'rb').read())
-    # Encode artifact TYPE_NAME.
+
+    # Re-assign the artifact TYPE_NAME attribute for consistent artifact resolution (see `get_artifact_title` method).
     data['title'] = artifact_type.TYPE_NAME
+
     return yaml.dump(data, sort_keys=False)
 
 
@@ -401,7 +408,8 @@ def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> str:
     """
     Gets the schema title from the artifact python class.
 
-    Note: For custom artifacts, their types are stored in MLMD under their `TYPE_NAME` attribute (see `get_artifact_schema` method).
+    Note: For custom artifacts, their types are stored in MLMD under their `TYPE_NAME` attribute
+    (see `get_artifact_schema` method).
     """
     if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
         return "tfx.{}".format(artifact_type.__name__)
