@@ -169,7 +169,11 @@ def get_artifact_type_class(
     # We need to compare `.name` and `.properties` (and not the entire proto
     # directly), because the proto `.id` field will be populated when the type
     # is read from MLMD.
-    if (artifact_type.name == candidate_type.name and
+    artifact_type_name = artifact_type.name
+    if artifact_type_name.startswith('tfx.'):
+      artifact_type_name = artifact_type_name[4:]
+
+    if (artifact_type_name == candidate_type.name and
         artifact_type.properties == candidate_type.properties):
       return cls
 

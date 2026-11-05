@@ -133,6 +133,16 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertIs(_MyArtifact,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
 
+    # Test that artifact types prefixed with 'tfx.' (as produced by KFP v2)
+    # are correctly resolved to their native Python classes.
+    mlmd_artifact_type_prefixed = metadata_store_pb2.ArtifactType()
+    mlmd_artifact_type_prefixed.name = 'tfx.Examples'
+    mlmd_artifact_type_prefixed.properties['span'] = metadata_store_pb2.INT
+    mlmd_artifact_type_prefixed.properties['version'] = metadata_store_pb2.INT
+    mlmd_artifact_type_prefixed.properties['split_names'] = metadata_store_pb2.STRING
+    self.assertIs(standard_artifacts.Examples,
+                  artifact_utils.get_artifact_type_class(mlmd_artifact_type_prefixed))
+
   def testValueArtifactTypeRoundTrip(self):
     mlmd_artifact_type = standard_artifacts.String.annotate_as(  # pylint: disable=protected-access
         system_artifacts.Dataset)._get_artifact_type()
