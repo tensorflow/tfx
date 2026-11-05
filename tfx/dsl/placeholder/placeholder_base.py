@@ -86,12 +86,6 @@ class Placeholder(abc.ABC):
     """
     self.expected_type = expected_type
 
-  def __deepcopy__(self, memo):
-    # Placeholders are immutable. While nobody should (want to) invoke deepcopy
-    # on a placeholder itself, when they're being cloned as part of a larger
-    # deepcopy operation, it is safe to just return the same instance.
-    return self
-
   def _is_maybe_proto_valued(self) -> bool:
     """True if the Placeholder might evaluate to a proto."""
     return _is_maybe_subclass(self.expected_type, message.Message)
