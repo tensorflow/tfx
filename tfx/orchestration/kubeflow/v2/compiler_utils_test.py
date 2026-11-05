@@ -113,6 +113,36 @@ class CompilerUtilsTest(tf.test.TestCase):
         yaml.safe_load(my_artifact_schema),
         yaml.safe_load(_EXPECTED_MY_ARTIFACT_SCHEMA))
 
+  def testArtifactTitleResolution(self):
+    # Test the resolution with specific artifact classes
+    # Test first party standard artifact.
+    self.assertEqual(
+        compiler_utils.get_artifact_title(standard_artifacts.Examples),
+        'tfx.Examples')
+
+    # Test Kubeflow simple artifact.
+    self.assertEqual(
+        compiler_utils.get_artifact_title(simple_artifacts.File), 'tfx.File')
+
+    # Test custom artifact type.
+    self.assertEqual(
+        compiler_utils.get_artifact_title(_MyArtifact), 'test.Type')
+
+  def testArtifactTitleMatchesSchemaTitle(self):
+    # Test the supported artifacts provided by TFX and a custom artifact
+    artifact_types = list(compiler_utils._SUPPORTED_STANDARD_ARTIFACT_TYPES)
+    artifact_types.append(_MyArtifact)
+
+    for artifact_type in artifact_types:
+      with self.subTest(artifact_type=artifact_type.__name__):
+        # Load the schema of the artifact
+        schema = yaml.safe_load(
+            compiler_utils.get_artifact_schema(artifact_type))
+
+        # validate that the schema title matches the title resolved from the artifact class
+        self.assertEqual(
+            compiler_utils.get_artifact_title(artifact_type), schema['title'])
+
   def testCustomArtifactBadSchemaTitleFails(self):
     bad_schemas = [_CustomArtifactBadSchemaTitle,
                    _CustomArtifactSchemaTitleTooManyDots]

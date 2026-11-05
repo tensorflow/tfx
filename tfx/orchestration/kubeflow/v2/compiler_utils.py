@@ -405,15 +405,13 @@ def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
 
 
 def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> str:
-    """
-    Gets the schema title from the artifact python class.
+  """Gets the schema title from the artifact python class.
 
-    Note: For custom artifacts, their types are stored in MLMD under their `TYPE_NAME` attribute
-    (see `get_artifact_schema` method).
-    """
-    if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
-        return "tfx.{}".format(artifact_type.__name__)
-    return artifact_type.TYPE_NAME
+  Custom artifact types use their TYPE_NAME as the title, which must match the title encoded by `get_artifact_schema`.
+  """
+  if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
+    return 'tfx.{}'.format(artifact_type.__name__)
+  return artifact_type.TYPE_NAME
 
 
 def placeholder_to_cel(
