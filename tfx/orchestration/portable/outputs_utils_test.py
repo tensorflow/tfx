@@ -347,6 +347,44 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(artifact_7.uri, outputs_utils.RESOLVED_AT_RUNTIME)
     self.assertTrue(artifact_7.is_external)
 
+  def testMigrateExecutorOutputDirFromStatefulWorkingDir(self):
+    existing_file = 'already_exists.txt'
+    existing_file_text = 'already_written'
+    files = ['foo.txt', 'bar.txt', 'path/to/qux.txt', existing_file]
+    data = ['foo', 'bar', 'qux', 'should_not_be_written']
+    expected_data = ['foo', 'bar', 'qux', existing_file_text]
+
+    tmpdir = self.create_tempdir()
+    stateful_working_dir = os.path.join(
+        tmpdir.full_path, 'stateful_working_dir'
+    )
+    for file, datum in zip(files, data):
+      stateful_working_file = os.path.join(stateful_working_dir, file)
+      fileio.makedirs(os.path.dirname(stateful_working_file))
+      with fileio.open(stateful_working_file, 'w') as f:
+        f.write(datum)
+
+    executor_output = os.path.join(tmpdir.full_path, 'executor_output')
+    executor_output_file_uri = os.path.join(executor_output, 'foobar.pbtxt')
+    fileio.makedirs(executor_output)
+    # Test when there's an existing file in the executor output dir
+    with fileio.open(os.path.join(executor_output, existing_file), 'w') as f:
+      f.write(existing_file_text)
+
+    exec_info = data_types.ExecutionInfo(
+        stateful_working_dir=stateful_working_dir,
+        execution_output_uri=executor_output_file_uri,
+    )
+    outputs_utils.migrate_executor_output_dir_from_stateful_working_directory(
+        exec_info, files
+    )
+
+    for file, datum in zip(files, expected_data):
+      with self.subTest(f'Check {file}'):
+        with fileio.open(os.path.join(executor_output, file), 'r') as f:
+          actual_datum = f.read()
+        self.assertEqual(actual_datum, datum)
+
   def testGetExecutorOutputDir(self):
     execution_info = data_types.ExecutionInfo(
         execution_output_uri=self._output_resolver().get_executor_output_uri(1)
