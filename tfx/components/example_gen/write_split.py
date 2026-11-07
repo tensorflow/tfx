@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PTransform for write split."""
+import ast
 import os
 from typing import Optional, Any, Dict, Union
 
@@ -66,6 +67,11 @@ def WriteSplit(
   if exec_properties:
     output_payload_format = exec_properties.get(
         standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
+    custom_config = exec_properties.get('custom_config')
+    if isinstance(custom_config, str):
+      custom_config = ast.literal_eval(custom_config)
+    num_shards = custom_config.get('num_shards', 0) if isinstance(
+        custom_config, dict) else 0
 
     if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
       schema = exec_properties.get('pyarrow_schema')
@@ -76,14 +82,18 @@ def WriteSplit(
                   os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
                   schema,
                   file_name_suffix='.parquet',
+                  num_shards=num_shards,
                   codec='snappy'))
 
+  else:
+    num_shards = 0
   return (example_split
           | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())
           # TODO(jyzhao): make shuffle optional.
           | 'Shuffle' >> beam.transforms.Reshuffle()
           | 'Write' >> beam.io.WriteToTFRecord(
               os.path.join(output_split_path, DEFAULT_FILE_NAME),
+              num_shards=num_shards,
               file_name_suffix='.gz'))
 
 
