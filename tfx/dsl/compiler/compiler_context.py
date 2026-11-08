@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import collections
-from typing import Optional, List, Set, Iterable, Dict
+from typing import Dict, Iterable, List, Optional, Set
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_node
@@ -24,6 +24,7 @@ from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_op
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
@@ -166,7 +167,9 @@ class NullPipelineContext(PipelineContext):
     # Doesn't invoke super().__init__() as it is not a typical PipelineContext
     # with a pipeline.
     self.pipeline = None
-    self.pipeline_info = None
+    self.pipeline_info = data_types.PipelineInfo(
+        pipeline_name='null_parent', pipeline_root='/dev/null'
+    )
     self.dsl_context_registry = dsl_context_registry.DslContextRegistry()
     self.dsl_context_registry.put_node(child.pipeline)
     self.parent = None
