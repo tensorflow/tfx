@@ -55,7 +55,7 @@ dill==0.3.1.1
 distlib==0.3.9
 distro==1.9.0
 dm-tree==0.1.8
-dnspython==2.7.0
+dnspython==2.9.2
 docker==7.1.0
 docopt==0.6.2
 docstring_parser==0.16
